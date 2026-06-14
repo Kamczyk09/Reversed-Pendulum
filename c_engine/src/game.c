@@ -3,8 +3,8 @@
 #include "cartpole.h"
 #include "raylib.h"
 
-#define SCREEN_WIDTH 800
-#define SCREEN_HEIGHT 450
+#define SCREEN_WIDTH 1600
+#define SCREEN_HEIGHT 900
 #define SCALE 100.0f
 
 int main(void) {

@@ -24,12 +24,12 @@ void cp_reset(CartPole* cp) {
   cp->state[2] = 0.0f; // pole angle
   cp->state[3] = 0.0f; // pole angular velocity
 
-  cp->mass_cart = 1.0f;
-  cp->mass_pole = 0.1f;
-  cp->length = 0.5f; // half the pole's length
-  cp->gravity = 5.0f;
+  cp->mass_cart = 4.0f;
+  cp->mass_pole = 0.08f;
+  cp->length = 1.0f; // half the pole's length
+  cp->gravity = 9.8f;
   cp->dt = 0.02f; // time step
-  cp->force_mag = 10.0f; // max force of the cart (Newtons)
+  cp->force_mag = 20.0f; // max force of the cart (Newtons)
 }
 
 void cp_step(CartPole* cp, float force, float dt) {
@@ -48,10 +48,13 @@ void cp_step(CartPole* cp, float force, float dt) {
   float x_acc = temp - cp->mass_pole * cp->length * theta_acc * costheta / (cp->mass_cart + cp->mass_pole);
 
   // Update state using Euler's method
-  x += x_dot * dt;
   x_dot += x_acc * dt;
-  theta += theta_dot * dt;
+  x += x_dot * dt;
   theta_dot += theta_acc * dt;
+  theta += theta_dot * dt;
+
+  theta_dot *= 0.997f; // Damping for the pole's angular velocity
+  x_dot *= 0.98f; // Damping for the cart's velocity
 
   cp->state[0] = x;
   cp->state[1] = x_dot;
