@@ -2,7 +2,7 @@
 
 This repository contains a C implementation of an inverted pendulum/cartpole game and a reinforcement learning training pipeline in Python using a custom C physics backend.
 
-![Inverted Pendulum screenshot](inverted_pendulum_ss.png)
+![Inverted Pendulum screenshot](image/inverted_pendulum_ss.png)
 
 ## Project structure
 
@@ -14,11 +14,13 @@ This repository contains a C implementation of an inverted pendulum/cartpole gam
 ## Requirements
 
 ### C game
+
 - `gcc`
 - `raylib` development libraries
 - Linux desktop environment for rendering
 
 ### Python training and playback
+
 - `python3`
 - `pip`
 - `gymnasium`
@@ -41,6 +43,7 @@ make game
 ```
 
 3. Controls:
+
 - Left arrow: apply force left
 - Right arrow: apply force right
 
