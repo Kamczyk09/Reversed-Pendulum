@@ -15,8 +15,8 @@ class CartPoleCustomEnv(gym.Env):
         self.render_mode = render_mode
         self.screen = None
         self.clock = None
-        self.screen_width = 800
-        self.screen_height = 450
+        self.screen_width = 1600
+        self.screen_height = 900
 
         # 1. Ładowanie silnika C
         lib_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'build', 'libcartpole.so'))
@@ -36,16 +36,21 @@ class CartPoleCustomEnv(gym.Env):
         # Parameters for the environment
         self.force_mag = 20.0
         self.dt = 0.02
-        self.max_steps = 500
         self.current_step = 0
+
+        if self.render_mode == "human":
+            self.max_steps = 999999999
+        else:
+            self.max_steps = 1000  # Swing-up needs time to pump energy AND then balance
 
         # 2. Define space
         # Action: 1 continuous value in the range [-1.0, 1.0] (from -100% to +100% engine power)
         self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(1,), dtype=np.float32)
 
-        # Observation: [x, x_dot, theta, theta_dot]
-        # For simplicity, we assume large limits for these values
-        high = np.array([4.8, np.inf, 0.418, np.inf], dtype=np.float32)
+        # Observation: [x, x_dot, cos(theta), sin(theta), theta_dot]
+        # We feed cos/sin instead of raw theta so the angle is continuous (no jump at +-pi)
+        # and bounded to [-1, 1] — critical for the swing-up task where the pole spins fully.
+        high = np.array([4.8, np.inf, 1.0, 1.0, np.inf], dtype=np.float32)
         self.observation_space = spaces.Box(low=-high, high=high, dtype=np.float32)
 
     def reset(self, seed=None, options=None):
@@ -63,26 +68,48 @@ class CartPoleCustomEnv(gym.Env):
 
         # 1. Scaling the action from [-1, 1] to the actual force magnitude
         # Ensuring that the action is clipped to the valid range
-        force_to_apply = float(np.clip(action[0], -1.0, 1.0) * self.force_mag)
+        act = float(np.clip(action[0], -1.0, 1.0))
+        force_to_apply = act * self.force_mag
 
         # 2. Phisics simulation step in C
         self.lib.cp_step(self.cp_handle, ctypes.c_float(force_to_apply), ctypes.c_float(self.dt))
 
         # 3. Read the new state from the C environment
+        x, x_dot, theta, theta_dot = self._read_state()
         obs = self._get_obs()
 
         # 4. Check the termination conditions
         terminated = bool(self.lib.cp_is_done(self.cp_handle))
         truncated = bool(self.current_step >= self.max_steps)
 
-        # 5. Reward function: +1 for each frame of survival (classic approach)
-        reward = 1.0 if not terminated else 0.0
+        # 5. Swing-up reward:
+        #    - upright term: 1.0 when balanced (theta=0), 0.0 when hanging (theta=pi)
+        #    - penalties keep the cart centered, discourage frantic spinning and wasted force
+        upright = (math.cos(theta) + 1.0) / 2.0
+        reward = (
+            upright
+            - 0.05 * (abs(x) / 2.4)
+            - 0.001 * (theta_dot ** 2)   # gently discourage endless spinning
+            - 0.01 * (act ** 2)          # small effort penalty (act in [-1, 1])
+        )
+
+        if terminated: reward -= 100.0  # Penalty for driving off the track
 
         return obs, reward, terminated, truncated, {}
 
-    def _get_obs(self):
+    def _read_state(self):
+        """Raw physics state from the C engine: [x, x_dot, theta, theta_dot]."""
         self.lib.cp_get_state(self.cp_handle, self.state_array)
-        return np.array([self.state_array[0], self.state_array[1], self.state_array[2], self.state_array[3]], dtype=np.float32)
+        return (self.state_array[0], self.state_array[1],
+                self.state_array[2], self.state_array[3])
+
+    def _get_obs(self):
+        """Network observation: angle encoded as cos/sin for continuity."""
+        x, x_dot, theta, theta_dot = self._read_state()
+        return np.array(
+            [x, x_dot, math.cos(theta), math.sin(theta), theta_dot],
+            dtype=np.float32,
+        )
 
     def render(self):
         if self.render_mode != "human":
@@ -96,9 +123,7 @@ class CartPoleCustomEnv(gym.Env):
             self.clock = pygame.time.Clock()
 
         # Load the current state to visualize
-        state = self._get_obs()
-        x = state[0]
-        theta = state[2]
+        x, x_dot, theta, theta_dot = self._read_state()
 
         # Clear the screen with white background
         self.screen.fill((255, 255, 255))
@@ -117,8 +142,8 @@ class CartPoleCustomEnv(gym.Env):
                          (cart_px - cart_width//2, cart_py - cart_height//2, cart_width, cart_height))
 
         # Draw the pole (red line)
-        # The pole length in pixels is scaled from the physical length (1.0) by the same scale factor
-        pole_len_px = 1.0 * scale
+        # The pole length in pixels is scaled from the physical length (2.0) by the same scale factor
+        pole_len_px = 2.0 * scale
         end_x = cart_px + int(pole_len_px * math.sin(theta))
         end_y = cart_py - int(pole_len_px * math.cos(theta))
 

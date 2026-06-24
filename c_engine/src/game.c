@@ -13,7 +13,7 @@ int main(void) {
 
     // Initializing cart-pole
     CartPole* cp = cp_create();
-    cp_reset(cp);
+    cp_reset(cp, 0);
 
     float dt = 1.0f / 60.0f;
     cp->dt = dt;
@@ -49,7 +49,7 @@ int main(void) {
         DrawRectangle(cart_px - cart_width/2, cart_py - cart_height/2, cart_width, cart_height, BLUE);
 
         // Drawing pendulum pole as a red line. Lenght of the pole in pixels is cp->length * 2 (since length is half the pole's length) multiplied by SCALE.
-        float pole_length = cp->length * 2.0f;
+        float pole_length = cp->length * 1.0f;
         int pole_end_x = cart_px + (int)(pole_length * SCALE * sinf(theta));
         int pole_end_y = cart_py - (int)(pole_length * SCALE * cosf(theta));
 

@@ -21,8 +21,8 @@ CartPole* cp_create(void);
 // Frees memory of a cart-pole
 void cp_destroy(CartPole*);
 
-// Resets cart-pole to initial state
-void cp_reset(CartPole*);
+// Resets cart-pole to initial state (seed controls the start perturbation)
+void cp_reset(CartPole*, unsigned int seed);
 
 // Takes one step of physics
 void cp_step(CartPole*, float force, float dt);

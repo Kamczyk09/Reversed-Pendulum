@@ -16,7 +16,7 @@ def main():
 
     print("Testing the policy...")
     running = True
-    for step in range(2000):
+    for step in range(20000):
         if not running: break
 
         env.render()  # Render the environment to visualize the agent's behavior
@@ -35,7 +35,7 @@ def main():
             print(f"Episode ended after {step} steps. (Terminated: {terminated})")
             break
 
-    print(f"Total reward achieved: {total_reward} / 500.0")
+    print(f"Total reward achieved: {total_reward} / {env.max_steps}")
     env.close()
 
 if __name__ == "__main__":

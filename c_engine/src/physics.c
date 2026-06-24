@@ -18,15 +18,24 @@ void cp_destroy(CartPole* cp) {
   }
 }
 
-void cp_reset(CartPole* cp) {
-  cp->state[0] = 0.0f; // cart position
-  cp->state[1] = 0.0f; // cart velocity
-  cp->state[2] = 3.14159f; // pole angle
-  cp->state[3] = 0.0f; // pole angular velocity
+// Uniform noise in [-mag, mag]
+static float cp_noise(float mag) {
+  return (((float)rand() / (float)RAND_MAX) * 2.0f - 1.0f) * mag;
+}
+
+void cp_reset(CartPole* cp, unsigned int seed) {
+  srand(seed);
+
+  // Start at the bottom (stable equilibrium) with a small random perturbation
+  // so the agent explores different states instead of one fixed start.
+  cp->state[0] = cp_noise(0.05f);            // cart position
+  cp->state[1] = cp_noise(0.05f);            // cart velocity
+  cp->state[2] = 3.14159f + cp_noise(0.1f);  // pole angle (~pi = hanging down)
+  cp->state[3] = cp_noise(0.05f);            // pole angular velocity
 
   cp->mass_cart = 4.0f;
   cp->mass_pole = 0.08f;
-  cp->length = 1.0f; // half the pole's length
+  cp->length = 2.0f; // half the pole's length
   cp->gravity = 9.8f;
   cp->dt = 0.02f; // time step
   cp->force_mag = 20.0f; // max force of the cart (Newtons)
@@ -70,13 +79,10 @@ void cp_get_state(CartPole* cp, float* out4) {
 
 int cp_is_done(CartPole* cp) {
     float x = cp->state[0];
-    float theta = cp->state[2];
 
-    float x_threshold = 2.4f;
-    float theta_threshold = 0.21f; // about 12 degrees
+    float x_threshold = 8.0f;
 
     if (x < -x_threshold || x > x_threshold) return 1;
-    if (theta < -theta_threshold || theta > theta_threshold) return 1;
 
       return 0; // Still working
   }

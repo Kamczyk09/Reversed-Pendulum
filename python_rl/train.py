@@ -16,11 +16,22 @@ def main():
     # MlpPolicy: A standard neural network (Multi-Layer Perceptron)
     # verbose=1: Prints training metrics (like average reward) to the console
     print("Creating PPO model...")
-    model = PPO("MlpPolicy", env, verbose=1)
+    model = PPO(
+        "MlpPolicy",
+        env,
+        verbose=1,
+        learning_rate=0.0003,
+        n_steps=4096,        # longer rollouts -> the agent sees full swing-up attempts
+        batch_size=64,
+        gamma=0.99,          # value a few seconds of upright balance ahead
+        gae_lambda=0.95,
+        ent_coef=0.01,       # encourage exploration to discover the swing-up
+    )
 
     # 4. Train the agent
-    print("Starting training (100,000 timesteps)...")
-    model.learn(total_timesteps=100_000)
+    total_timesteps = 1_000_000
+    print(f"Starting training ({total_timesteps:,} timesteps)...")
+    model.learn(total_timesteps=total_timesteps)
 
     # 5. Save the weights
     print(f"Saving the model to {model_path}...")
